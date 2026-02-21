@@ -14,25 +14,7 @@ public class MainGames {
             System.out.println(log.toString());
             return;
         }
-
-        createDirectories();
-        createFiles();
-        saveLogToFile();
-
-        System.out.println("Установка завершена. Проверьте файл temp.txt для деталей.");
-    }
-
-    private static boolean checkGamesDirectory() {
-        File gamesDir = new File(GAMES_PATH);
-        if (!gamesDir.exists()) {
-            log.append("ОШИБКА: Папка Games не найдена по пути ").append(GAMES_PATH).append("\n");
-            return false;
-        }
-        return true;
-    }
-
-    private static void createDirectories() {
-        List<String> allDirectories = Arrays.asList(
+        List<String> directoriesToCreate = Arrays.asList(
                 GAMES_PATH + "\\src",
                 GAMES_PATH + "\\res",
                 GAMES_PATH + "\\savegames",
@@ -46,13 +28,7 @@ public class MainGames {
                 GAMES_PATH + "\\res\\icons"
         );
 
-        for (String dirPath : allDirectories) {
-            createDirectory(dirPath);
-        }
-    }
-
-    private static void createFiles() {
-        List<String> allFiles = Arrays.asList(
+        List<String> filesToCreate = Arrays.asList(
 
                 GAMES_PATH + "\\src\\main\\Main.java",
                 GAMES_PATH + "\\src\\main\\Utils.java",
@@ -60,7 +36,31 @@ public class MainGames {
                 GAMES_PATH + "\\temp\\temp.txt"
         );
 
-        for (String filePath : allFiles) {
+        createDirectories(directoriesToCreate);
+        createFiles(filesToCreate);
+        saveLogToFile();
+        System.out.println("Установка завершена. Проверьте файл temp.txt для деталей.");
+    }
+
+    private static boolean checkGamesDirectory() {
+        File gamesDir = new File(GAMES_PATH);
+        if (!gamesDir.exists()) {
+            log.append("ОШИБКА: Папка Games не найдена по пути ").append(GAMES_PATH).append("\n");
+            return false;
+        }
+        return true;
+    }
+
+    private static void createDirectories(List<String> directories) {
+
+             for (String dirPath : directories) {
+            createDirectory(dirPath);
+        }
+    }
+
+    private static void createFiles(List<String> files) {
+
+        for (String filePath : files) {
             createFile(filePath);
         }
     }
