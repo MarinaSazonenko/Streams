@@ -1,125 +1,141 @@
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Arrays;
+import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
-public class MainGames {
-    private static final String GAMES_PATH = "D:\\Games";
-    private static StringBuilder log = new StringBuilder();
+public class GameProgress implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-    public static void main(String[] args) {
-        if (!checkGamesDirectory()) {
-            System.out.println("Программа завершена из-за отсутствия папки Games");
-            System.out.println(log.toString());
-            return;
-        }
-        List<String> directoriesToCreate = Arrays.asList(
-                GAMES_PATH + "\\src",
-                GAMES_PATH + "\\res",
-                GAMES_PATH + "\\savegames",
-                GAMES_PATH + "\\temp",
+    private final int health;
+    private final int weapons;
+    private final int lvl;
+    private final double distance;
 
-                GAMES_PATH + "\\src\\main",
-                GAMES_PATH + "\\src\\test",
-
-                GAMES_PATH + "\\res\\drawables",
-                GAMES_PATH + "\\res\\vectors",
-                GAMES_PATH + "\\res\\icons"
-        );
-
-        List<String> filesToCreate = Arrays.asList(
-
-                GAMES_PATH + "\\src\\main\\Main.java",
-                GAMES_PATH + "\\src\\main\\Utils.java",
-
-                GAMES_PATH + "\\temp\\temp.txt"
-        );
-
-        createDirectories(directoriesToCreate);
-        createFiles(filesToCreate);
-        saveLogToFile();
-        System.out.println("Установка завершена. Проверьте файл temp.txt для деталей.");
+    public GameProgress(int health, int weapons, int lvl, double distance) {
+        this.health = health;
+        this.weapons = weapons;
+        this.lvl = lvl;
+        this.distance = distance;
     }
 
-    private static boolean checkGamesDirectory() {
-        File gamesDir = new File(GAMES_PATH);
-        if (!gamesDir.exists()) {
-            log.append("ОШИБКА: Папка Games не найдена по пути ").append(GAMES_PATH).append("\n");
-            return false;
-        }
-        return true;
+    @Override
+    public String toString() {
+        return "GameProgress{" +
+                "health=" + health +
+                ", weapons=" + weapons +
+                ", lvl=" + lvl +
+                ", distance=" + distance +
+                '}';
     }
 
-    private static void createDirectories(List<String> directories) {
-
-             for (String dirPath : directories) {
-            createDirectory(dirPath);
+    public static void saveGame(String filePath, GameProgress progress) {
+        try (FileOutputStream fos = new
+                FileOutputStream(filePath);
+             ObjectOutputStream oos = new
+                     ObjectOutputStream(fos)) {
+            oos.writeObject(progress);
+            System.out.println("✓ Сохранен файл: " + filePath);
+        } catch (IOException ex) {
+            System.out.println("✗ Ошибка при сохранении файла: " + filePath);
+            System.out.println("Причина: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 
-    private static void createFiles(List<String> files) {
+    public static void zipFiles(String zipFilePath, List<String> filesToZip) {
 
-        for (String filePath : files) {
-            createFile(filePath);
-        }
-    }
+        try (ZipOutputStream zout = new ZipOutputStream(
+                new FileOutputStream(zipFilePath))) {
+            System.out.println("Начинаем создание архива: " + zipFilePath);
 
-    private static void createDirectory(String path) {
-        File dir = new File(path);
+            for (String filePath : filesToZip) {
+                File fileToZip = new File(filePath);
+                if (!fileToZip.exists()) {
+                    System.err.println("  ✗ Файл не найден, пропускаем: " + filePath);
+                    continue;
+                }
+                try (FileInputStream fis = new FileInputStream(fileToZip)) {
+                    ZipEntry entry = new ZipEntry(fileToZip.getName());
+                    zout.putNextEntry(entry);
 
-        if (dir.mkdir()) {
-            log.append("✓ Директория создана: ").append(path).append("\n");
-        } else {
-            if (dir.exists()) {
-                log.append("→ Директория уже существует: ").append(path).append("\n");
-            } else {
-                log.append("✗ НЕ УДАЛОСЬ создать директорию: ").append(path)
-                        .append(" (возможно, нет прав доступа или не существует родительской папки)\n");
-            }
-        }
-    }
+                    byte[] buffer = new byte[4096];
+                    int bytesRead;
+                    while ((bytesRead = fis.read(buffer)) != -1) {
+                        zout.write(buffer, 0, bytesRead);
+                    }
+                    zout.closeEntry();
+                    System.out.println("  ✓ Добавлен в архив: " + filePath);
+                } catch (IOException e) {
+                    System.err.println("  ✗ Ошибка при обработке файла: " + filePath);
+                    System.err.println("    Причина: " + e.getMessage());
 
-    private static void createFile(String path) {
-        File file = new File(path);
-
-        try {
-            if (file.createNewFile()) {
-                log.append("✓ Файл создан: ").append(path).append("\n");
-            } else {
-                if (file.exists()) {
-                    log.append("→ Файл уже существует: ").append(path).append("\n");
-                } else {
-                    log.append("✗ НЕ УДАЛОСЬ создать файл: ").append(path).append("\n");
                 }
             }
+            System.out.println("✓ Архив успешно создан: " + zipFilePath);
         } catch (IOException e) {
-            log.append("✗ ОШИБКА при создании файла ").append(path)
-                    .append(": ").append(e.getMessage()).append("\n");
+            System.err.println("✗ Ошибка при создании архива: " + zipFilePath);
+            e.printStackTrace();
         }
     }
 
-    private static void saveLogToFile() {
+    public static void deleteFiles(List<String> filesToDelete) {
+        System.out.println("\nНачинаем удаление исходных файлов...");
 
-        File tempFile = new File(GAMES_PATH + "\\temp\\temp.txt");
+        for (String filePath : filesToDelete) {
+            File file = new File(filePath);
 
-        File parentDir = tempFile.getParentFile();
-        if (parentDir != null && !parentDir.exists()) {
-            parentDir.mkdirs();
-            log.append("✓ Создана недостающая директория: ").append(parentDir.getPath()).append("\n");
+            if (file.exists()) {
+                boolean deleted = file.delete();
+                if (deleted) {
+                    System.out.println("  ✓ Удален файл: " + filePath);
+                } else {
+                    System.err.println("  ✗ Не удалось удалить файл: " + filePath);
+                    System.err.println("    Возможно, файл открыт в другой программе или нет прав");
+                }
+            } else {
+                System.out.println("  ℹ Файл не найден (возможно уже удален): " + filePath);
+
+            }
         }
+        System.out.println("Удаление завершено!");
+    }
 
-        try (FileWriter writer = new FileWriter(tempFile)) {
-            writer.write(log.toString());
-            System.out.println("\n✅ Лог успешно записан в файл: " + tempFile.getAbsolutePath());
-        } catch (IOException e) {
-            System.out.println("\n❌ КРИТИЧЕСКАЯ ОШИБКА: Не удалось записать лог в файл!");
-            System.out.println("📋 Содержимое лога:");
-            System.out.println("------------------------");
-            System.out.println(log.toString());
-            System.out.println("------------------------");
-            System.err.println("Техническая деталь ошибки:");
-            e.printStackTrace();
-        }
+    public static void main(String[] args) {
+
+        GameProgress progress1 =
+                new GameProgress(100, 1, 1, 0.5);
+        GameProgress progress2 =
+                new GameProgress(85, 3, 3, 15.7);
+        GameProgress progress3 =
+                new GameProgress(45, 7, 8, 125.3);
+
+        System.out.println("Созданы объекты:");
+        System.out.println(progress1);
+        System.out.println(progress2);
+        System.out.println(progress3);
+
+        String savesDir = "D:\\Games\\savegames\\";
+
+        System.out.println("\nНачинаем сохранение:");
+        saveGame(savesDir + "save1.dat", progress1);
+        saveGame(savesDir + "save2.dat", progress2);
+        saveGame(savesDir + "save3.dat", progress3);
+
+        System.out.println("\nСохранение завершено!");
+
+        List<String> filesToZip = new ArrayList<>();
+        filesToZip.add("D:/Games/savegames/save1.dat");
+        filesToZip.add("D:/Games/savegames/save2.dat");
+        filesToZip.add("D:/Games/savegames/save3.dat");
+        String zipPath = "D:/Games/savegames/saves.zip";
+        GameProgress.zipFiles(zipPath, filesToZip);
+
+        List<String> filesToDelete = new ArrayList<>();
+        filesToDelete.add("D:/Games/savegames/save1.dat");
+        filesToDelete.add("D:/Games/savegames/save2.dat");
+        filesToDelete.add("D:/Games/savegames/save3.dat");
+
+        deleteFiles(filesToDelete);
     }
 }
